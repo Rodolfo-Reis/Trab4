@@ -25,6 +25,9 @@
 //#define TC74_TEMP_READ           0x00
 //#define TC74_CONF_RW             0x01
 
+/* Numero de elementos de dados para guradar */
+#define mem_size 10
+
 /*definir o tamanho da stcak e prioridade das threads*/
 #define Stacksize 1024
 #define thread_tempread_prio 3
@@ -32,18 +35,35 @@
 
 /*definir periocidade das threads (em ms)*/
 #define thread_tempread_period 5000
+#define thread_print_period 20000
 
 /* criar espaço de memoria para cada thread*/
 K_THREAD_STACK_DEFINE(thread_tempread_stack, Stacksize);
+K_THREAD_STACK_DEFINE(thread_print_stack, Stacksize);
 
 /*criar variaveis para a inf de cada thread */
 struct k_thread thread_tempread_data;
+struct k_thread thread_print_data;
 
 /* criar id de tarefas*/
 k_tid_t thread_tempread_tid;
+k_tid_t thread_print_tid;
+
+/* defifnir array cicular para guardar dados */
+typedef struct{
+	int data[mem_size]; /*array para guardar dados */
+	int idx;	/* ponteiro para a proxima posiçao a guardar dados*/
+}buffer;
+
+
+/* variaveis globais (shared memory) para comunicar entre tarefas*/
+buffer temp_buffer; /* buffer para guardar valores de temperatura*/
+
+
 
 /* prototipos de cada thread */
 void thread_tempread_code(void *argA , void *argB, void *argC);
+void thread_print_code(void *argA , void *argB, void *argC);
 
 int ret;
 /* defifnir o registo config do sensor -> 0000 0000 */
@@ -77,20 +97,19 @@ void main(void)
         K_THREAD_STACK_SIZEOF(thread_tempread_stack), thread_tempread_code,
         NULL, NULL, NULL, thread_tempread_prio, 0, K_NO_WAIT);
 
+	thread_print_tid = k_thread_create(&thread_print_data, thread_print_stack,
+        K_THREAD_STACK_SIZEOF(thread_print_stack), thread_print_code,
+        NULL, NULL, NULL, thread_print_prio, 0, K_NO_WAIT);
+
 	return;
 
 }
 
-/* implementaçao da thread tempread */
+/* implementaçao da thread tempread*/
 void thread_tempread_code(void *argA , void *argB, void *argC){
 
 	/* Timing variables to control task periodicity */
     int64_t fin_time=0, release_time=0;
-
-	/* Variables to time execution */
-    //timing_t start_time, end_time;
-    //uint64_t total_cycles=0;
-    //uint64_t total_ns=0;
 
 	printk("Thread tempread init (periodic)\n");
 
@@ -99,36 +118,68 @@ void thread_tempread_code(void *argA , void *argB, void *argC){
 
 	while(1){
 
-		//start_time = timing_counter_get();
-
-		int temp_sinal =0; /* sinal da temperatura lida, 0- positivo, 1-negativo*/
+		//int temp_sinal =0; /* sinal da temperatura lida, 0- positivo, 1-negativo*/
 		uint8_t temp_reading;
-		//uint8_t sensor_regs =TC74_TEMP_READ;
 		ret = i2c_read_dt(&dev_i2c, &temp_reading, sizeof(temp_reading));
 		if(ret != 0){
 			printk("Failed to write/read I2C device address %x at Reg. %x \r\n", dev_i2c.addr,config);
 		}
 
 		if(temp_reading >= 128){
-			temp_reading = 256 - temp_reading;
-			temp_sinal = 1;
+			//temp_reading = 256 - temp_reading;
+			//temp_sinal = 1;
+			// temperatura negativa
+			printk("-%d \n", temp_reading);
+			temp_buffer.data[temp_buffer.idx] = -256 + temp_reading; // guardar o valor da temperatura no buffer de dados
+			temp_buffer.idx = (temp_buffer.idx + 1)% mem_size; // incrementar a posiçao a guardar dados
 		}
 		else{
-			temp_sinal = 0;
+			//temperatura positiva
+			//temp_sinal = 0;
+			printk("%d \n", temp_reading);
+			temp_buffer.data[temp_buffer.idx] = temp_reading; // guardar o valor da temperatura no buffer de dados
+			temp_buffer.idx = (temp_buffer.idx + 1)% mem_size; // incrementar a posiçao a guardar dados
 		}
-
+		/*
 		if(temp_sinal == 1){
 			printk("-%d \n", temp_reading);
 		}
 		else{
 			printk("%d \n", temp_reading);
-		}
+		}*/
 
 		/* Wait for next release instant */ 
         fin_time = k_uptime_get();
         if( fin_time < release_time) {
             k_msleep(release_time - fin_time); /* There are other variants, k_sleep(), k_usleep(), ... */
             release_time += thread_tempread_period;
+		}
+
+	}
+
+	timing_stop();
+}
+
+/* implementaçao da thread print */
+void thread_print_code(void *argA , void *argB, void *argC){
+	/* Timing variables to control task periodicity */
+    int64_t fin_time=0, release_time=0;
+
+	printk("Thread print init (periodic)\n");
+
+	/* Compute next release instant */
+    release_time = k_uptime_get() + thread_print_period;
+
+	while(1){
+		for(int i=0; i<mem_size;i++){
+			printk("%d  ",temp_buffer.data[i]);
+		}
+		printk("\n");
+		/* Wait for next release instant */ 
+    	fin_time = k_uptime_get();
+    	if( fin_time < release_time) {
+        	k_msleep(release_time - fin_time); /* There are other variants, k_sleep(), k_usleep(), ... */
+        	release_time += thread_print_period;
 		}
 
 	}
