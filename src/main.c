@@ -3,13 +3,13 @@
  * 	de comandos pela UART 
  * 
  * 
- * O sistema implementa 5 Input, valor de tempearatura obtido através do sensor tc74 através de comunicaçao i2c com o mesmo e 4 butoes da placa 
- * que permite ler o estado em que cada butao se encontra. Para a obtençao destes valores foram implementadas 2 threads periodicas, 
- * 1 para temperatura e outra para os butoes, que irão periodicamento ler o valor de cada intput.
- * O sistema tem 4 saídas e para a alteraçao das saídas foi implementada 1 thread periodica que ira atribuir a cada saida um estado que eta  guardado numa variavel.
- * Também foi implementado um comunicaçao via uart para a inserçao de comandos para alteraçao dos periodos de cada thread, comando do tipo #TXYYYY! ou #tXYYY!,
- * onde X pode ser T/t para thread temperartura, L/t para thread leds ou B/b para thread butoes e YYYY sao qutro digitos de tempo em ms.
- * e alteraçao do estado dos leds, comando do tipo #Lxy! ou #lxy! , em que é o led que pretendemos alterar estado e y o estado.
+ *  O sistema implementa 5 Input, valor de tempearatura obtido através do sensor tc74 através de comunicaçao i2c com o mesmo e 4 butoes da placa 
+ *  que permite ler o estado em que cada butao se encontra. Para a obtençao destes valores foram implementadas 2 threads periodicas, 
+ *  1 para temperatura e outra para os butoes, que irão periodicamento ler o valor de cada intput.
+ *  O sistema tem 4 saídas e para a alteraçao das saídas foi implementada 1 thread periodica que ira atribuir a cada saida um estado que eta  guardado numa variavel.
+ *  Também foi implementado um comunicaçao via uart para a inserçao de comandos para alteraçao dos periodos de cada thread, comando do tipo #TXYYYY! ou #tXYYY!,
+ *  onde X pode ser T/t para thread temperartura, L/t para thread leds ou B/b para thread butoes e YYYY sao qutro digitos de tempo em ms.
+ *  e alteraçao do estado dos leds, comando do tipo #Lxy! ou #lxy! , em que é o led que pretendemos alterar estado e y o estado.
  *  
  * 
  * Base documentation:
@@ -408,17 +408,14 @@ int cmdProcess(void){
 	}
 	/* verificar se é commando para alterar estado dos leds*/
 	else if(cmdString[SOF_C+1] == 'L' || cmdString[SOF_C+1] == 'l'){
-		if(cmdLen<5){
-			return WRONG_STR_FORMAT;
-		}
 		/* tamanho deste tipo de comando é 5*/
 		if((EOF_C - SOF_C) > 4 ){
 			return CMD_NOT_FOUND;
 		}
-		else if(cmdString[SOF_C+2] < '0' || cmdString[2] > '3'){
+		else if(cmdString[SOF_C+2] < '0' || cmdString[SOF_C+2] > '3'){
 			return CMD_NOT_FOUND;
 		} 
-		else if(cmdString[SOF_C+3] < '0' || cmdString[3] > '1'){
+		else if(cmdString[SOF_C+3] < '0' || cmdString[SOF_C+3] > '1'){
 			return CMD_NOT_FOUND;
 		} 
 		else{
