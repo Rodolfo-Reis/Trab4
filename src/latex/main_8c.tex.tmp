@@ -1,0 +1,682 @@
+\hypertarget{main_8c}{}\doxysection{main.\+c File Reference}
+\label{main_8c}\index{main.c@{main.c}}
+
+
+Implementaçao de um modulo simples de Input/\+Output sensor/atuador com envio de comandos pela U\+A\+RT.  
+
+
+{\ttfamily \#include $<$zephyr/kernel.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/device.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/devicetree.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/types.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/drivers/gpio.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/timing/timing.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/drivers/uart.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/drivers/i2c.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/sys/printk.\+h$>$}\newline
+{\ttfamily \#include $<$zephyr/sys/util.\+h$>$}\newline
+{\ttfamily \#include $<$inttypes.\+h$>$}\newline
+Include dependency graph for main.\+c\+:
+% FIG 0
+\doxysubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{main_8c_afcb352d4b5a59e9bb75e1b45255e48e4}{I2\+C0\+\_\+\+N\+O\+DE}}~D\+T\+\_\+\+N\+O\+D\+E\+L\+A\+B\+EL(tempsensor)
+\item 
+\#define \mbox{\hyperlink{main_8c_a6c3e22dcc157776fad063c320f061a89}{mem\+\_\+size}}~10
+\item 
+\#define \mbox{\hyperlink{main_8c_aa02fad08216d219f753c75cbec139ce3}{Receive\+\_\+\+Buff\+\_\+\+Size}}~10
+\item 
+\#define \mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}}~1024
+\item 
+\#define \mbox{\hyperlink{main_8c_ad8c4ed9d2a954d69d1e98cac248486da}{thread\+\_\+tempread\+\_\+prio}}~3
+\item 
+\#define \mbox{\hyperlink{main_8c_abe3c1bfa55d0be2b4a4300e4d13f88e8}{thread\+\_\+print\+\_\+prio}}~3
+\item 
+\#define \mbox{\hyperlink{main_8c_a093263bf1d83586919762b48a4b1e1c9}{thread\+\_\+but\+\_\+prio}}~3
+\item 
+\#define \mbox{\hyperlink{main_8c_a9cedc587d23b4a5ac51db06144e8c1b8}{thread\+\_\+led\+\_\+prio}}~3
+\item 
+\#define \mbox{\hyperlink{main_8c_aee6bb7daaea46e818b8313b099344b59}{thread\+\_\+cmd\+\_\+prio}}~4
+\item 
+\#define \mbox{\hyperlink{main_8c_abf6f155bdb9da42f7e68cc1e78262806}{G\+P\+I\+O0\+\_\+\+N\+O\+DE}}~D\+T\+\_\+\+N\+O\+D\+E\+L\+A\+B\+EL(gpio0)
+\item 
+\#define \mbox{\hyperlink{main_8c_afeb91c08d99141b88aa891100a186640}{thread\+\_\+print\+\_\+period}}~1000
+\item 
+\#define \mbox{\hyperlink{main_8c_a9db82511befdafbc10487714faf211e1}{thread\+\_\+cmd\+\_\+period}}~1000
+\item 
+\#define \mbox{\hyperlink{main_8c_aa02fad08216d219f753c75cbec139ce3}{Receive\+\_\+\+Buff\+\_\+\+Size}}~10
+\item 
+\#define \mbox{\hyperlink{main_8c_a32db27973b480f1b536d3820238efa1b}{Receive\+\_\+\+Timeout}}~100
+\item 
+\#define \mbox{\hyperlink{main_8c_a07b40c5bd9acc44f62a9182527dbcc9b}{U\+A\+R\+T\+\_\+\+N\+O\+DE}}~D\+T\+\_\+\+N\+O\+D\+E\+L\+A\+B\+EL(uart0)
+\item 
+\#define \mbox{\hyperlink{main_8c_ab81a83583ac9be36af9219017bd5b91e}{M\+A\+X\+\_\+\+C\+M\+D\+S\+T\+R\+I\+N\+G\+\_\+\+S\+I\+ZE}}~10
+\item 
+\#define \mbox{\hyperlink{main_8c_a98ce42a3f4332d00581da3291c9865cb}{S\+O\+F\+\_\+\+S\+YM}}~\textquotesingle{}\#\textquotesingle{}
+\item 
+\#define \mbox{\hyperlink{main_8c_a87045860c979c33b7bb6e4f90e7914df}{E\+O\+F\+\_\+\+S\+YM}}~\textquotesingle{}!\textquotesingle{}
+\item 
+\#define \mbox{\hyperlink{main_8c_a687984f47d8cce148d1b914d2b79612a}{E\+X\+I\+T\+\_\+\+S\+U\+C\+C\+E\+SS}}~0;
+\item 
+\#define \mbox{\hyperlink{main_8c_a4cc630b5a4ac206fbcb8794c4fcd8529}{E\+M\+P\+T\+Y\+\_\+\+S\+T\+R\+I\+NG}}~-\/1;
+\item 
+\#define \mbox{\hyperlink{main_8c_a1a8abf4c1c3c9a4d4830fbc2749b584d}{S\+T\+R\+I\+N\+G\+\_\+\+F\+U\+LL}}~-\/1;
+\item 
+\#define \mbox{\hyperlink{main_8c_ad2a96719ed1fb180976b3510e81b4be7}{C\+M\+D\+\_\+\+N\+O\+T\+\_\+\+F\+O\+U\+ND}}~-\/2;
+\item 
+\#define \mbox{\hyperlink{main_8c_a2d0e2349672bcb9c5f702056d1841ae5}{W\+R\+O\+N\+G\+\_\+\+S\+T\+R\+\_\+\+F\+O\+R\+M\+AT}}~-\/3;
+\end{DoxyCompactItemize}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{main_8c_a6107d7ff698bba469b9c158c19561a00}{K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE}} (thread\+\_\+tempread\+\_\+stack, \mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}})
+\item 
+\mbox{\hyperlink{main_8c_ae6444fb385adca7fffccd6cc5a1ecf17}{K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE}} (thread\+\_\+print\+\_\+stack, \mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}})
+\item 
+\mbox{\hyperlink{main_8c_a4faa93fe82403c177835e0da8c92b344}{K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE}} (thread\+\_\+but\+\_\+stack, \mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}})
+\item 
+\mbox{\hyperlink{main_8c_abe436524690b1570fcf1771f93c13f3b}{K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE}} (thread\+\_\+led\+\_\+stack, \mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}})
+\item 
+\mbox{\hyperlink{main_8c_a62d37c0f7c45bee32672867f8e354e20}{K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE}} (thread\+\_\+cmd\+\_\+stack, \mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}})
+\item 
+void \mbox{\hyperlink{main_8c_aa6f7e2aab06c5b1a57bdb3a20ec9ecbd}{thread\+\_\+tempread\+\_\+code}} (void $\ast$argA, void $\ast$argB, void $\ast$argC)
+\begin{DoxyCompactList}\small\item\em Thread de leitura da temperatura. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{main_8c_afa0430949bfafa0c0c67d881710c2f18}{thread\+\_\+print\+\_\+code}} (void $\ast$argA, void $\ast$argB, void $\ast$argC)
+\begin{DoxyCompactList}\small\item\em Thread de Print dos valores de temperatura, estado dos leds e butoes e periodo correspondente a cada thread. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{main_8c_a66aaaaffff30b49a911145064628258d}{thread\+\_\+but\+\_\+code}} (void $\ast$argA, void $\ast$argB, void $\ast$argC)
+\begin{DoxyCompactList}\small\item\em Thread de leitura do estado dos butoes. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{main_8c_ab7fd313401d30498b562722a62f15d8f}{thread\+\_\+led\+\_\+code}} (void $\ast$argA, void $\ast$argB, void $\ast$argC)
+\begin{DoxyCompactList}\small\item\em Thread de verificaçao/alteraçao do estado dos leds. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{main_8c_a0c2513ce764988dd2d8296ff9ff402c8}{thread\+\_\+cmd\+\_\+code}} (void $\ast$argA, void $\ast$argB, void $\ast$argC)
+\begin{DoxyCompactList}\small\item\em Thread de leitura da temperatura. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{main_8c_a4833ab50f251f8273ac5e17fcb38810b}{in\+\_\+out\+\_\+puts\+\_\+config}} (void)
+\begin{DoxyCompactList}\small\item\em Configuraçao dos butoes. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{main_8c_a3e60a2a77259955195be353070b236a2}{Cmd\+Char}} (unsigned char new\+Char)
+\begin{DoxyCompactList}\small\item\em Funçao para adicionar char introduzido pelo user num buffer. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{main_8c_aa7378276f1ce70fcd096f857a924198d}{resetcmd}} (void)
+\begin{DoxyCompactList}\small\item\em Funçao de reset do buffer de comandos. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{main_8c_a15f8115192ea63e641349713d0111f76}{cmd\+Process}} (void)
+\begin{DoxyCompactList}\small\item\em Processa o cmd\+String que foi inserido para verificar comando. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{main_8c_a6288eba0f8e8ad3ab1544ad731eb7667}{main}} (void)
+\begin{DoxyCompactList}\small\item\em Funçao Main. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const uint8\+\_\+t \mbox{\hyperlink{main_8c_ae5db5c9eda2f8f7a3b905743c4a412c4}{buttons\+\_\+pins}} \mbox{[}$\,$\mbox{]} = \{ 11,12,24,25\}
+\item 
+const uint8\+\_\+t \mbox{\hyperlink{main_8c_a7088b687d3de04372b05d36ed9b6f546}{leds\+\_\+pins}} \mbox{[}$\,$\mbox{]} = \{ 13,14,15,16\}
+\item 
+volatile int \mbox{\hyperlink{main_8c_a5de35b59a6b7a7c7272d6a71070cba11}{thread\+\_\+tempread\+\_\+period}} = 5000
+\item 
+volatile int \mbox{\hyperlink{main_8c_a7026e425789d9360b0e05a2119add1d4}{thread\+\_\+but\+\_\+period}} = 10
+\item 
+volatile int \mbox{\hyperlink{main_8c_a15690ef6e3ac9d9de8af5fc0cec488e4}{thread\+\_\+led\+\_\+period}} = 1000
+\item 
+struct k\+\_\+thread \mbox{\hyperlink{main_8c_ae109bd29894a3e55e44d8b07173000c7}{thread\+\_\+tempread\+\_\+data}}
+\item 
+struct k\+\_\+thread \mbox{\hyperlink{main_8c_a1bb4edb2c01b7c2cef0c291b9eb4ba24}{thread\+\_\+print\+\_\+data}}
+\item 
+struct k\+\_\+thread \mbox{\hyperlink{main_8c_a8fa78f420436edca2c946574933b6594}{thread\+\_\+but\+\_\+data}}
+\item 
+struct k\+\_\+thread \mbox{\hyperlink{main_8c_a519c4bdf0a2f10969e8cc4568aa4e4ce}{thread\+\_\+led\+\_\+data}}
+\item 
+struct k\+\_\+thread \mbox{\hyperlink{main_8c_ac7dc20b64529936c3c4ed179a4de4170}{thread\+\_\+cmd\+\_\+data}}
+\item 
+k\+\_\+tid\+\_\+t \mbox{\hyperlink{main_8c_a53b9622bf70d6cebe3bc4a8ffabc9f0b}{thread\+\_\+tempread\+\_\+tid}}
+\item 
+k\+\_\+tid\+\_\+t \mbox{\hyperlink{main_8c_ad715c7e90d928ffa86837d02d950707d}{thread\+\_\+print\+\_\+tid}}
+\item 
+k\+\_\+tid\+\_\+t \mbox{\hyperlink{main_8c_a5d5344bfd8c5264d7ff56160305fee2c}{thread\+\_\+but\+\_\+tid}}
+\item 
+k\+\_\+tid\+\_\+t \mbox{\hyperlink{main_8c_a29bb239088cf3b1e4334df4707bec059}{thread\+\_\+led\+\_\+tid}}
+\item 
+k\+\_\+tid\+\_\+t \mbox{\hyperlink{main_8c_a85e39218b82c4dd4c35bfe98b0828cc6}{thread\+\_\+cmd\+\_\+tid}}
+\item 
+volatile int \mbox{\hyperlink{main_8c_aed71a558a0fc065e11b9c3c8fc2e2ad6}{temp}} = 0
+\item 
+volatile int \mbox{\hyperlink{main_8c_a24334b6caf2ee8c00b2db6219c06f5a9}{but1}} =0
+\item 
+volatile int \mbox{\hyperlink{main_8c_ab6eadc619c44012e8473e322592a7087}{but2}} =0
+\item 
+volatile int \mbox{\hyperlink{main_8c_a4b7c60e54b073a607ac3f49b76958fd5}{but3}} =0
+\item 
+volatile int \mbox{\hyperlink{main_8c_add10417f67b3b44857775e4c09aeaa81}{but4}} =0
+\item 
+volatile int \mbox{\hyperlink{main_8c_aeb03358c4817ec8fc9f010c090a8db46}{led0\+\_\+state}} =1
+\item 
+volatile int \mbox{\hyperlink{main_8c_a51ac4495ab17930c5ec4c5fd7e111e04}{led1\+\_\+state}} =1
+\item 
+volatile int \mbox{\hyperlink{main_8c_a21fc24bb5def88089bcecb9c9b8ad799}{led2\+\_\+state}} =0
+\item 
+volatile int \mbox{\hyperlink{main_8c_a4081964aeb2aac800f410c2ed2d3d7a6}{led3\+\_\+state}} =0
+\item 
+volatile int \mbox{\hyperlink{main_8c_afcbd375597a4ec2d6ad0af22543fe3e8}{cmd}} = 0
+\item 
+volatile int \mbox{\hyperlink{main_8c_a15f00096124548e5611a600671c2e240}{res}} = 1
+\item 
+int \mbox{\hyperlink{main_8c_a8e44c00366a6ad7be391e050f015c419}{S\+O\+F\+\_\+C}} = -\/1
+\item 
+int \mbox{\hyperlink{main_8c_a8edbc5f3b5cfbf10b6c6cb66e67a712a}{E\+O\+F\+\_\+C}} = -\/1
+\item 
+int \mbox{\hyperlink{main_8c_a6baa346e44f4c2158d2be4f9b77b8203}{ret}}
+\item 
+uint8\+\_\+t \mbox{\hyperlink{main_8c_a7947c7e436bdd1bbe498d0ae1eb37490}{config}} = 0x00
+\item 
+const struct device $\ast$ \mbox{\hyperlink{main_8c_a7dee997e1a185467314b43f216e2d5f9}{uart}} = D\+E\+V\+I\+C\+E\+\_\+\+D\+T\+\_\+\+G\+ET(\mbox{\hyperlink{main_8c_a07b40c5bd9acc44f62a9182527dbcc9b}{U\+A\+R\+T\+\_\+\+N\+O\+DE}})
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Implementaçao de um modulo simples de Input/\+Output sensor/atuador com envio de comandos pela U\+A\+RT. 
+
+O sistema implementa 5 Input, valor de tempearatura obtido através do sensor tc74 através de comunicaçao i2c com o mesmo e 4 butoes da placa que permite ler o estado em que cada butao se encontra. Para a obtençao destes valores foram implementadas 2 threads periodicas, 1 para temperatura e outra para os butoes, que irão periodicamento ler o valor de cada intput. O sistema tem 4 saídas e para a alteraçao das saídas foi implementada 1 thread periodica que ira atribuir a cada saida um estado que eta guardado numa variavel. Também foi implementado um comunicaçao via uart para a inserçao de comandos para alteraçao dos periodos de cada thread, comando do tipo \#\+T\+X\+Y\+Y\+YY! ou \#t\+X\+Y\+YY!, onde X pode ser T/t para thread temperartura, L/t para thread leds ou B/b para thread butoes e Y\+Y\+YY sao qutro digitos de tempo em ms. e alteraçao do estado dos leds, comando do tipo \#\+Lxy! ou \#lxy! , em que é o led que pretendemos alterar estado e y o estado.
+
+Base documentation\+: Zephyr kernel\+: ~\newline
+ \href{https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/kernel/services/index.html\#kernel-services}{\texttt{ https\+://developer.\+nordicsemi.\+com/n\+R\+F\+\_\+\+Connect\+\_\+\+S\+D\+K/doc/latest/zephyr/kernel/services/index.\+html\#kernel-\/services}}
+
+Device\+Tree Board D\+TS can be found in B\+U\+I\+L\+D\+\_\+\+D\+I\+R/zephyr/zephyr.\+dts \href{https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/dts/api-usage.html\#dt-from-c}{\texttt{ https\+://developer.\+nordicsemi.\+com/n\+R\+F\+\_\+\+Connect\+\_\+\+S\+D\+K/doc/latest/zephyr/guides/dts/api-\/usage.\+html\#dt-\/from-\/c}} ~\newline
+
+
+HW info \href{https://infocenter.nordicsemi.com/topic/struct_nrf52/struct/nrf52840.html}{\texttt{ https\+://infocenter.\+nordicsemi.\+com/topic/struct\+\_\+nrf52/struct/nrf52840.\+html}} Section\+: n\+R\+F52840 Product Specification -\/$>$ Peripherals -\/$>$ G\+P\+IO / G\+P\+I\+O\+TE
+
+Board specific HW info can be found in the n\+R\+F52840\+\_\+\+D\+K\+\_\+\+User\+\_\+\+Guide\+\_\+20201203. I/O pins available at pg 27
+
+\begin{DoxyAuthor}{Author}
+Rodolfo Oliveira, Nº\+Mec\+: 88919 
+\end{DoxyAuthor}
+\begin{DoxyDate}{Date}
+06/06/2023 
+\end{DoxyDate}
+
+
+\doxysubsection{Macro Definition Documentation}
+\mbox{\Hypertarget{main_8c_ad2a96719ed1fb180976b3510e81b4be7}\label{main_8c_ad2a96719ed1fb180976b3510e81b4be7}} 
+\index{main.c@{main.c}!CMD\_NOT\_FOUND@{CMD\_NOT\_FOUND}}
+\index{CMD\_NOT\_FOUND@{CMD\_NOT\_FOUND}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{CMD\_NOT\_FOUND}{CMD\_NOT\_FOUND}}
+{\footnotesize\ttfamily \#define C\+M\+D\+\_\+\+N\+O\+T\+\_\+\+F\+O\+U\+ND~-\/2;}
+
+Invalid C\+MD \mbox{\Hypertarget{main_8c_a4cc630b5a4ac206fbcb8794c4fcd8529}\label{main_8c_a4cc630b5a4ac206fbcb8794c4fcd8529}} 
+\index{main.c@{main.c}!EMPTY\_STRING@{EMPTY\_STRING}}
+\index{EMPTY\_STRING@{EMPTY\_STRING}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{EMPTY\_STRING}{EMPTY\_STRING}}
+{\footnotesize\ttfamily \#define E\+M\+P\+T\+Y\+\_\+\+S\+T\+R\+I\+NG~-\/1;}
+
+String is empty \mbox{\Hypertarget{main_8c_a87045860c979c33b7bb6e4f90e7914df}\label{main_8c_a87045860c979c33b7bb6e4f90e7914df}} 
+\index{main.c@{main.c}!EOF\_SYM@{EOF\_SYM}}
+\index{EOF\_SYM@{EOF\_SYM}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{EOF\_SYM}{EOF\_SYM}}
+{\footnotesize\ttfamily \#define E\+O\+F\+\_\+\+S\+YM~\textquotesingle{}!\textquotesingle{}}
+
+Simbolo de fim de comando \mbox{\Hypertarget{main_8c_a687984f47d8cce148d1b914d2b79612a}\label{main_8c_a687984f47d8cce148d1b914d2b79612a}} 
+\index{main.c@{main.c}!EXIT\_SUCCESS@{EXIT\_SUCCESS}}
+\index{EXIT\_SUCCESS@{EXIT\_SUCCESS}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{EXIT\_SUCCESS}{EXIT\_SUCCESS}}
+{\footnotesize\ttfamily \#define E\+X\+I\+T\+\_\+\+S\+U\+C\+C\+E\+SS~0;}
+
+Successfull exit \mbox{\Hypertarget{main_8c_abf6f155bdb9da42f7e68cc1e78262806}\label{main_8c_abf6f155bdb9da42f7e68cc1e78262806}} 
+\index{main.c@{main.c}!GPIO0\_NODE@{GPIO0\_NODE}}
+\index{GPIO0\_NODE@{GPIO0\_NODE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{GPIO0\_NODE}{GPIO0\_NODE}}
+{\footnotesize\ttfamily \#define G\+P\+I\+O0\+\_\+\+N\+O\+DE~D\+T\+\_\+\+N\+O\+D\+E\+L\+A\+B\+EL(gpio0)}
+
+Get node ID for G\+P\+I\+O0, which has leds and buttons \mbox{\Hypertarget{main_8c_afcb352d4b5a59e9bb75e1b45255e48e4}\label{main_8c_afcb352d4b5a59e9bb75e1b45255e48e4}} 
+\index{main.c@{main.c}!I2C0\_NODE@{I2C0\_NODE}}
+\index{I2C0\_NODE@{I2C0\_NODE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{I2C0\_NODE}{I2C0\_NODE}}
+{\footnotesize\ttfamily \#define I2\+C0\+\_\+\+N\+O\+DE~D\+T\+\_\+\+N\+O\+D\+E\+L\+A\+B\+EL(tempsensor)}
+
+definir o \char`\"{}node identifier\char`\"{} do sensor \mbox{\Hypertarget{main_8c_ab81a83583ac9be36af9219017bd5b91e}\label{main_8c_ab81a83583ac9be36af9219017bd5b91e}} 
+\index{main.c@{main.c}!MAX\_CMDSTRING\_SIZE@{MAX\_CMDSTRING\_SIZE}}
+\index{MAX\_CMDSTRING\_SIZE@{MAX\_CMDSTRING\_SIZE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{MAX\_CMDSTRING\_SIZE}{MAX\_CMDSTRING\_SIZE}}
+{\footnotesize\ttfamily \#define M\+A\+X\+\_\+\+C\+M\+D\+S\+T\+R\+I\+N\+G\+\_\+\+S\+I\+ZE~10}
+
+definir estrutura de comandos e saidas possiveis tamanho maximo do comando \mbox{\Hypertarget{main_8c_a6c3e22dcc157776fad063c320f061a89}\label{main_8c_a6c3e22dcc157776fad063c320f061a89}} 
+\index{main.c@{main.c}!mem\_size@{mem\_size}}
+\index{mem\_size@{mem\_size}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{mem\_size}{mem\_size}}
+{\footnotesize\ttfamily \#define mem\+\_\+size~10}
+
+Numero de elementos de dados para guradar \mbox{\Hypertarget{main_8c_aa02fad08216d219f753c75cbec139ce3}\label{main_8c_aa02fad08216d219f753c75cbec139ce3}} 
+\index{main.c@{main.c}!Receive\_Buff\_Size@{Receive\_Buff\_Size}}
+\index{Receive\_Buff\_Size@{Receive\_Buff\_Size}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{Receive\_Buff\_Size}{Receive\_Buff\_Size}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \#define Receive\+\_\+\+Buff\+\_\+\+Size~10}
+
+Define the size of the U\+A\+RT receive buffer
+
+definir o tamanho do receive buffer da uart \mbox{\Hypertarget{main_8c_aa02fad08216d219f753c75cbec139ce3}\label{main_8c_aa02fad08216d219f753c75cbec139ce3}} 
+\index{main.c@{main.c}!Receive\_Buff\_Size@{Receive\_Buff\_Size}}
+\index{Receive\_Buff\_Size@{Receive\_Buff\_Size}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{Receive\_Buff\_Size}{Receive\_Buff\_Size}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \#define Receive\+\_\+\+Buff\+\_\+\+Size~10}
+
+Define the size of the U\+A\+RT receive buffer
+
+definir o tamanho do receive buffer da uart \mbox{\Hypertarget{main_8c_a32db27973b480f1b536d3820238efa1b}\label{main_8c_a32db27973b480f1b536d3820238efa1b}} 
+\index{main.c@{main.c}!Receive\_Timeout@{Receive\_Timeout}}
+\index{Receive\_Timeout@{Receive\_Timeout}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{Receive\_Timeout}{Receive\_Timeout}}
+{\footnotesize\ttfamily \#define Receive\+\_\+\+Timeout~100}
+
+definir o periodo de timeout da uart \mbox{\Hypertarget{main_8c_a98ce42a3f4332d00581da3291c9865cb}\label{main_8c_a98ce42a3f4332d00581da3291c9865cb}} 
+\index{main.c@{main.c}!SOF\_SYM@{SOF\_SYM}}
+\index{SOF\_SYM@{SOF\_SYM}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{SOF\_SYM}{SOF\_SYM}}
+{\footnotesize\ttfamily \#define S\+O\+F\+\_\+\+S\+YM~\textquotesingle{}\#\textquotesingle{}}
+
+Simbolo de inicio de comando \mbox{\Hypertarget{main_8c_a8bb81297d84518181b821e565c7a61be}\label{main_8c_a8bb81297d84518181b821e565c7a61be}} 
+\index{main.c@{main.c}!Stacksize@{Stacksize}}
+\index{Stacksize@{Stacksize}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{Stacksize}{Stacksize}}
+{\footnotesize\ttfamily \#define Stacksize~1024}
+
+tamanho da stack da thread \mbox{\Hypertarget{main_8c_a1a8abf4c1c3c9a4d4830fbc2749b584d}\label{main_8c_a1a8abf4c1c3c9a4d4830fbc2749b584d}} 
+\index{main.c@{main.c}!STRING\_FULL@{STRING\_FULL}}
+\index{STRING\_FULL@{STRING\_FULL}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{STRING\_FULL}{STRING\_FULL}}
+{\footnotesize\ttfamily \#define S\+T\+R\+I\+N\+G\+\_\+\+F\+U\+LL~-\/1;}
+
+String is full \mbox{\Hypertarget{main_8c_a093263bf1d83586919762b48a4b1e1c9}\label{main_8c_a093263bf1d83586919762b48a4b1e1c9}} 
+\index{main.c@{main.c}!thread\_but\_prio@{thread\_but\_prio}}
+\index{thread\_but\_prio@{thread\_but\_prio}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_but\_prio}{thread\_but\_prio}}
+{\footnotesize\ttfamily \#define thread\+\_\+but\+\_\+prio~3}
+
+prioridade da thread dos butoes \mbox{\Hypertarget{main_8c_a9db82511befdafbc10487714faf211e1}\label{main_8c_a9db82511befdafbc10487714faf211e1}} 
+\index{main.c@{main.c}!thread\_cmd\_period@{thread\_cmd\_period}}
+\index{thread\_cmd\_period@{thread\_cmd\_period}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_cmd\_period}{thread\_cmd\_period}}
+{\footnotesize\ttfamily \#define thread\+\_\+cmd\+\_\+period~1000}
+
+periodo estatico da thread dos comandos \mbox{\Hypertarget{main_8c_aee6bb7daaea46e818b8313b099344b59}\label{main_8c_aee6bb7daaea46e818b8313b099344b59}} 
+\index{main.c@{main.c}!thread\_cmd\_prio@{thread\_cmd\_prio}}
+\index{thread\_cmd\_prio@{thread\_cmd\_prio}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_cmd\_prio}{thread\_cmd\_prio}}
+{\footnotesize\ttfamily \#define thread\+\_\+cmd\+\_\+prio~4}
+
+prioridade da thread da cmd \mbox{\Hypertarget{main_8c_a9cedc587d23b4a5ac51db06144e8c1b8}\label{main_8c_a9cedc587d23b4a5ac51db06144e8c1b8}} 
+\index{main.c@{main.c}!thread\_led\_prio@{thread\_led\_prio}}
+\index{thread\_led\_prio@{thread\_led\_prio}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_led\_prio}{thread\_led\_prio}}
+{\footnotesize\ttfamily \#define thread\+\_\+led\+\_\+prio~3}
+
+prioridade da thread dos leds \mbox{\Hypertarget{main_8c_afeb91c08d99141b88aa891100a186640}\label{main_8c_afeb91c08d99141b88aa891100a186640}} 
+\index{main.c@{main.c}!thread\_print\_period@{thread\_print\_period}}
+\index{thread\_print\_period@{thread\_print\_period}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_print\_period}{thread\_print\_period}}
+{\footnotesize\ttfamily \#define thread\+\_\+print\+\_\+period~1000}
+
+periodo estatico da thread print de valores \mbox{\Hypertarget{main_8c_abe3c1bfa55d0be2b4a4300e4d13f88e8}\label{main_8c_abe3c1bfa55d0be2b4a4300e4d13f88e8}} 
+\index{main.c@{main.c}!thread\_print\_prio@{thread\_print\_prio}}
+\index{thread\_print\_prio@{thread\_print\_prio}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_print\_prio}{thread\_print\_prio}}
+{\footnotesize\ttfamily \#define thread\+\_\+print\+\_\+prio~3}
+
+prioridade da thread para print de valores \mbox{\Hypertarget{main_8c_ad8c4ed9d2a954d69d1e98cac248486da}\label{main_8c_ad8c4ed9d2a954d69d1e98cac248486da}} 
+\index{main.c@{main.c}!thread\_tempread\_prio@{thread\_tempread\_prio}}
+\index{thread\_tempread\_prio@{thread\_tempread\_prio}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_tempread\_prio}{thread\_tempread\_prio}}
+{\footnotesize\ttfamily \#define thread\+\_\+tempread\+\_\+prio~3}
+
+prioridade da thread tempread \mbox{\Hypertarget{main_8c_a07b40c5bd9acc44f62a9182527dbcc9b}\label{main_8c_a07b40c5bd9acc44f62a9182527dbcc9b}} 
+\index{main.c@{main.c}!UART\_NODE@{UART\_NODE}}
+\index{UART\_NODE@{UART\_NODE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{UART\_NODE}{UART\_NODE}}
+{\footnotesize\ttfamily \#define U\+A\+R\+T\+\_\+\+N\+O\+DE~D\+T\+\_\+\+N\+O\+D\+E\+L\+A\+B\+EL(uart0)}
+
+uart node identifier \mbox{\Hypertarget{main_8c_a2d0e2349672bcb9c5f702056d1841ae5}\label{main_8c_a2d0e2349672bcb9c5f702056d1841ae5}} 
+\index{main.c@{main.c}!WRONG\_STR\_FORMAT@{WRONG\_STR\_FORMAT}}
+\index{WRONG\_STR\_FORMAT@{WRONG\_STR\_FORMAT}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{WRONG\_STR\_FORMAT}{WRONG\_STR\_FORMAT}}
+{\footnotesize\ttfamily \#define W\+R\+O\+N\+G\+\_\+\+S\+T\+R\+\_\+\+F\+O\+R\+M\+AT~-\/3;}
+
+Wrong string format 
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{main_8c_a3e60a2a77259955195be353070b236a2}\label{main_8c_a3e60a2a77259955195be353070b236a2}} 
+\index{main.c@{main.c}!CmdChar@{CmdChar}}
+\index{CmdChar@{CmdChar}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{CmdChar()}{CmdChar()}}
+{\footnotesize\ttfamily int Cmd\+Char (\begin{DoxyParamCaption}\item[{unsigned char}]{new\+Char }\end{DoxyParamCaption})}
+
+
+
+Funçao para adicionar char introduzido pelo user num buffer. 
+
+\DoxyHorRuler{0}
+ adiciona char á cmd\+String ~\newline
+ \begin{DoxyReturn}{Returns}
+0\+: if success ~\newline
+ 
+
+-\/1\+: if cmd string full ~\newline
+
+\end{DoxyReturn}
+\DoxyHorRuler{0}
+ \mbox{\Hypertarget{main_8c_a15f8115192ea63e641349713d0111f76}\label{main_8c_a15f8115192ea63e641349713d0111f76}} 
+\index{main.c@{main.c}!cmdProcess@{cmdProcess}}
+\index{cmdProcess@{cmdProcess}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{cmdProcess()}{cmdProcess()}}
+{\footnotesize\ttfamily int cmd\+Process (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Processa o cmd\+String que foi inserido para verificar comando. 
+
+\begin{DoxyReturn}{Returns}
+0\+: comando valido e executado ~\newline
+ 
+
+-\/1\+: string vazia ou comando incompleto ~\newline
+ 
+
+-\/2\+: comando invalido encontrado ~\newline
+ 
+
+-\/3\+: formato da string incorreto ~\newline
+
+\end{DoxyReturn}
+\DoxyHorRuler{0}
+ \mbox{\Hypertarget{main_8c_a4833ab50f251f8273ac5e17fcb38810b}\label{main_8c_a4833ab50f251f8273ac5e17fcb38810b}} 
+\index{main.c@{main.c}!in\_out\_puts\_config@{in\_out\_puts\_config}}
+\index{in\_out\_puts\_config@{in\_out\_puts\_config}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{in\_out\_puts\_config()}{in\_out\_puts\_config()}}
+{\footnotesize\ttfamily void in\+\_\+out\+\_\+puts\+\_\+config (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Configuraçao dos butoes. 
+
+\mbox{\Hypertarget{main_8c_a4faa93fe82403c177835e0da8c92b344}\label{main_8c_a4faa93fe82403c177835e0da8c92b344}} 
+\index{main.c@{main.c}!K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}}
+\index{K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{K\_THREAD\_STACK\_DEFINE()}{K\_THREAD\_STACK\_DEFINE()}\hspace{0.1cm}{\footnotesize\ttfamily [1/5]}}
+{\footnotesize\ttfamily K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE (\begin{DoxyParamCaption}\item[{thread\+\_\+but\+\_\+stack}]{,  }\item[{\mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}}}]{ }\end{DoxyParamCaption})}
+
+Criar espaço de memoria para a thread dos butoes \mbox{\Hypertarget{main_8c_a62d37c0f7c45bee32672867f8e354e20}\label{main_8c_a62d37c0f7c45bee32672867f8e354e20}} 
+\index{main.c@{main.c}!K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}}
+\index{K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{K\_THREAD\_STACK\_DEFINE()}{K\_THREAD\_STACK\_DEFINE()}\hspace{0.1cm}{\footnotesize\ttfamily [2/5]}}
+{\footnotesize\ttfamily K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE (\begin{DoxyParamCaption}\item[{thread\+\_\+cmd\+\_\+stack}]{,  }\item[{\mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}}}]{ }\end{DoxyParamCaption})}
+
+Criar espaço de memoria para a thread dos comandos \mbox{\Hypertarget{main_8c_abe436524690b1570fcf1771f93c13f3b}\label{main_8c_abe436524690b1570fcf1771f93c13f3b}} 
+\index{main.c@{main.c}!K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}}
+\index{K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{K\_THREAD\_STACK\_DEFINE()}{K\_THREAD\_STACK\_DEFINE()}\hspace{0.1cm}{\footnotesize\ttfamily [3/5]}}
+{\footnotesize\ttfamily K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE (\begin{DoxyParamCaption}\item[{thread\+\_\+led\+\_\+stack}]{,  }\item[{\mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}}}]{ }\end{DoxyParamCaption})}
+
+Criar espaço de memoria para a thread dos leds \mbox{\Hypertarget{main_8c_ae6444fb385adca7fffccd6cc5a1ecf17}\label{main_8c_ae6444fb385adca7fffccd6cc5a1ecf17}} 
+\index{main.c@{main.c}!K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}}
+\index{K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{K\_THREAD\_STACK\_DEFINE()}{K\_THREAD\_STACK\_DEFINE()}\hspace{0.1cm}{\footnotesize\ttfamily [4/5]}}
+{\footnotesize\ttfamily K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE (\begin{DoxyParamCaption}\item[{thread\+\_\+print\+\_\+stack}]{,  }\item[{\mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}}}]{ }\end{DoxyParamCaption})}
+
+Criar espaço de memoria para a thread print \mbox{\Hypertarget{main_8c_a6107d7ff698bba469b9c158c19561a00}\label{main_8c_a6107d7ff698bba469b9c158c19561a00}} 
+\index{main.c@{main.c}!K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}}
+\index{K\_THREAD\_STACK\_DEFINE@{K\_THREAD\_STACK\_DEFINE}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{K\_THREAD\_STACK\_DEFINE()}{K\_THREAD\_STACK\_DEFINE()}\hspace{0.1cm}{\footnotesize\ttfamily [5/5]}}
+{\footnotesize\ttfamily K\+\_\+\+T\+H\+R\+E\+A\+D\+\_\+\+S\+T\+A\+C\+K\+\_\+\+D\+E\+F\+I\+NE (\begin{DoxyParamCaption}\item[{thread\+\_\+tempread\+\_\+stack}]{,  }\item[{\mbox{\hyperlink{main_8c_a8bb81297d84518181b821e565c7a61be}{Stacksize}}}]{ }\end{DoxyParamCaption})}
+
+Criar espaço de memoria para a thread tempread \mbox{\Hypertarget{main_8c_a6288eba0f8e8ad3ab1544ad731eb7667}\label{main_8c_a6288eba0f8e8ad3ab1544ad731eb7667}} 
+\index{main.c@{main.c}!main@{main}}
+\index{main@{main}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily void main (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Funçao Main. 
+
+Funçao main configura os devices I2C, inputs e outputs, e uart e cria as threads \mbox{\Hypertarget{main_8c_aa7378276f1ce70fcd096f857a924198d}\label{main_8c_aa7378276f1ce70fcd096f857a924198d}} 
+\index{main.c@{main.c}!resetcmd@{resetcmd}}
+\index{resetcmd@{resetcmd}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{resetcmd()}{resetcmd()}}
+{\footnotesize\ttfamily void resetcmd (\begin{DoxyParamCaption}\item[{void}]{ }\end{DoxyParamCaption})}
+
+
+
+Funçao de reset do buffer de comandos. 
+
+Resseta o buufer onde estao guardados o comandos bem como o valor de start of frame e end of frame \mbox{\Hypertarget{main_8c_a66aaaaffff30b49a911145064628258d}\label{main_8c_a66aaaaffff30b49a911145064628258d}} 
+\index{main.c@{main.c}!thread\_but\_code@{thread\_but\_code}}
+\index{thread\_but\_code@{thread\_but\_code}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_but\_code()}{thread\_but\_code()}}
+{\footnotesize\ttfamily void thread\+\_\+but\+\_\+code (\begin{DoxyParamCaption}\item[{void $\ast$}]{argA,  }\item[{void $\ast$}]{argB,  }\item[{void $\ast$}]{argC }\end{DoxyParamCaption})}
+
+
+
+Thread de leitura do estado dos butoes. 
+
+Esta thread implementa a leitura do estado dos pinos correspondente a cada 1 dos 4 butoes existentes na placa Esta thread é periodica e o seu periodo pode ser alterado pela introduçao de um comando \mbox{\Hypertarget{main_8c_a0c2513ce764988dd2d8296ff9ff402c8}\label{main_8c_a0c2513ce764988dd2d8296ff9ff402c8}} 
+\index{main.c@{main.c}!thread\_cmd\_code@{thread\_cmd\_code}}
+\index{thread\_cmd\_code@{thread\_cmd\_code}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_cmd\_code()}{thread\_cmd\_code()}}
+{\footnotesize\ttfamily void thread\+\_\+cmd\+\_\+code (\begin{DoxyParamCaption}\item[{void $\ast$}]{argA,  }\item[{void $\ast$}]{argB,  }\item[{void $\ast$}]{argC }\end{DoxyParamCaption})}
+
+
+
+Thread de leitura da temperatura. 
+
+Esta thread implementa a verificaçao se foi inserido um comando e se o mesmo corresponde a um comando correto para a alteraçao do periodo das threads ou alteraçao do estado dos leds. Nesta implementaçao nao está disponivel a identificaçao de todas as possibilidades de comandos mal inseridos, somente permite identificar os casos mais comuns de comando errados e verificar se mesmo a estrutura do comando esteja correta mas um dos char inserido nao for o esperado identifica como comando invalido Esta thread é periodica e o seu periodo é estatico \mbox{\Hypertarget{main_8c_ab7fd313401d30498b562722a62f15d8f}\label{main_8c_ab7fd313401d30498b562722a62f15d8f}} 
+\index{main.c@{main.c}!thread\_led\_code@{thread\_led\_code}}
+\index{thread\_led\_code@{thread\_led\_code}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_led\_code()}{thread\_led\_code()}}
+{\footnotesize\ttfamily void thread\+\_\+led\+\_\+code (\begin{DoxyParamCaption}\item[{void $\ast$}]{argA,  }\item[{void $\ast$}]{argB,  }\item[{void $\ast$}]{argC }\end{DoxyParamCaption})}
+
+
+
+Thread de verificaçao/alteraçao do estado dos leds. 
+
+Esta thread implementa a verificaçao se o estados dos led, output, precisa de ser alterado. O estado dos leds pode ser alterado atraves da inserçao de comando via uart. Esta thread é periodica e o seu periodo pode ser alterado pela introduçao de um comando \mbox{\Hypertarget{main_8c_afa0430949bfafa0c0c67d881710c2f18}\label{main_8c_afa0430949bfafa0c0c67d881710c2f18}} 
+\index{main.c@{main.c}!thread\_print\_code@{thread\_print\_code}}
+\index{thread\_print\_code@{thread\_print\_code}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_print\_code()}{thread\_print\_code()}}
+{\footnotesize\ttfamily void thread\+\_\+print\+\_\+code (\begin{DoxyParamCaption}\item[{void $\ast$}]{argA,  }\item[{void $\ast$}]{argB,  }\item[{void $\ast$}]{argC }\end{DoxyParamCaption})}
+
+
+
+Thread de Print dos valores de temperatura, estado dos leds e butoes e periodo correspondente a cada thread. 
+
+Esta thread imprime os valores das variaveis que contêm o valor da temperatura e estados dos butoes e leds e periodo respetivo de cada thread, tempread, butoes e leds Esta thread é periodica e o seu periodo é estatico \mbox{\Hypertarget{main_8c_aa6f7e2aab06c5b1a57bdb3a20ec9ecbd}\label{main_8c_aa6f7e2aab06c5b1a57bdb3a20ec9ecbd}} 
+\index{main.c@{main.c}!thread\_tempread\_code@{thread\_tempread\_code}}
+\index{thread\_tempread\_code@{thread\_tempread\_code}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_tempread\_code()}{thread\_tempread\_code()}}
+{\footnotesize\ttfamily void thread\+\_\+tempread\+\_\+code (\begin{DoxyParamCaption}\item[{void $\ast$}]{argA,  }\item[{void $\ast$}]{argB,  }\item[{void $\ast$}]{argC }\end{DoxyParamCaption})}
+
+
+
+Thread de leitura da temperatura. 
+
+Esta thread implementa comunicaçao I2C com o sensor tc74 para retirar amostras do valor da temperatura Esta thread é periodica e o seu periodo pode ser alterado pela introduçao de um comando 
+
+\doxysubsection{Variable Documentation}
+\mbox{\Hypertarget{main_8c_a24334b6caf2ee8c00b2db6219c06f5a9}\label{main_8c_a24334b6caf2ee8c00b2db6219c06f5a9}} 
+\index{main.c@{main.c}!but1@{but1}}
+\index{but1@{but1}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{but1}{but1}}
+{\footnotesize\ttfamily volatile int but1 =0}
+
+Var para guardar valor lido do estado do butao 1 \mbox{\Hypertarget{main_8c_ab6eadc619c44012e8473e322592a7087}\label{main_8c_ab6eadc619c44012e8473e322592a7087}} 
+\index{main.c@{main.c}!but2@{but2}}
+\index{but2@{but2}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{but2}{but2}}
+{\footnotesize\ttfamily volatile int but2 =0}
+
+Var para guardar valor lido do estado do butao 2 \mbox{\Hypertarget{main_8c_a4b7c60e54b073a607ac3f49b76958fd5}\label{main_8c_a4b7c60e54b073a607ac3f49b76958fd5}} 
+\index{main.c@{main.c}!but3@{but3}}
+\index{but3@{but3}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{but3}{but3}}
+{\footnotesize\ttfamily volatile int but3 =0}
+
+Var para guardar valor lido do estado do butao 3 \mbox{\Hypertarget{main_8c_add10417f67b3b44857775e4c09aeaa81}\label{main_8c_add10417f67b3b44857775e4c09aeaa81}} 
+\index{main.c@{main.c}!but4@{but4}}
+\index{but4@{but4}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{but4}{but4}}
+{\footnotesize\ttfamily volatile int but4 =0}
+
+Var para guardar valor lido do estado do butao 4 \mbox{\Hypertarget{main_8c_ae5db5c9eda2f8f7a3b905743c4a412c4}\label{main_8c_ae5db5c9eda2f8f7a3b905743c4a412c4}} 
+\index{main.c@{main.c}!buttons\_pins@{buttons\_pins}}
+\index{buttons\_pins@{buttons\_pins}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{buttons\_pins}{buttons\_pins}}
+{\footnotesize\ttfamily const uint8\+\_\+t buttons\+\_\+pins\mbox{[}$\,$\mbox{]} = \{ 11,12,24,25\}}
+
+\mbox{\Hypertarget{main_8c_afcbd375597a4ec2d6ad0af22543fe3e8}\label{main_8c_afcbd375597a4ec2d6ad0af22543fe3e8}} 
+\index{main.c@{main.c}!cmd@{cmd}}
+\index{cmd@{cmd}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{cmd}{cmd}}
+{\footnotesize\ttfamily volatile int cmd = 0}
+
+Var para indicaçao de que foi inserido comando quando tem o valor 1 \mbox{\Hypertarget{main_8c_a7947c7e436bdd1bbe498d0ae1eb37490}\label{main_8c_a7947c7e436bdd1bbe498d0ae1eb37490}} 
+\index{main.c@{main.c}!config@{config}}
+\index{config@{config}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{config}{config}}
+{\footnotesize\ttfamily uint8\+\_\+t config = 0x00}
+
+defifnir o registo config do sensor -\/$>$ 0000 0000 \mbox{\Hypertarget{main_8c_a8edbc5f3b5cfbf10b6c6cb66e67a712a}\label{main_8c_a8edbc5f3b5cfbf10b6c6cb66e67a712a}} 
+\index{main.c@{main.c}!EOF\_C@{EOF\_C}}
+\index{EOF\_C@{EOF\_C}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{EOF\_C}{EOF\_C}}
+{\footnotesize\ttfamily int E\+O\+F\+\_\+C = -\/1}
+
+\mbox{\Hypertarget{main_8c_aeb03358c4817ec8fc9f010c090a8db46}\label{main_8c_aeb03358c4817ec8fc9f010c090a8db46}} 
+\index{main.c@{main.c}!led0\_state@{led0\_state}}
+\index{led0\_state@{led0\_state}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{led0\_state}{led0\_state}}
+{\footnotesize\ttfamily volatile int led0\+\_\+state =1}
+
+Var para guardar estado do led 1 \mbox{\Hypertarget{main_8c_a51ac4495ab17930c5ec4c5fd7e111e04}\label{main_8c_a51ac4495ab17930c5ec4c5fd7e111e04}} 
+\index{main.c@{main.c}!led1\_state@{led1\_state}}
+\index{led1\_state@{led1\_state}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{led1\_state}{led1\_state}}
+{\footnotesize\ttfamily volatile int led1\+\_\+state =1}
+
+Var para guardar estado do led 2 \mbox{\Hypertarget{main_8c_a21fc24bb5def88089bcecb9c9b8ad799}\label{main_8c_a21fc24bb5def88089bcecb9c9b8ad799}} 
+\index{main.c@{main.c}!led2\_state@{led2\_state}}
+\index{led2\_state@{led2\_state}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{led2\_state}{led2\_state}}
+{\footnotesize\ttfamily volatile int led2\+\_\+state =0}
+
+Var para guardar estado do led 3 \mbox{\Hypertarget{main_8c_a4081964aeb2aac800f410c2ed2d3d7a6}\label{main_8c_a4081964aeb2aac800f410c2ed2d3d7a6}} 
+\index{main.c@{main.c}!led3\_state@{led3\_state}}
+\index{led3\_state@{led3\_state}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{led3\_state}{led3\_state}}
+{\footnotesize\ttfamily volatile int led3\+\_\+state =0}
+
+Var para guardar estado do led 4 \mbox{\Hypertarget{main_8c_a7088b687d3de04372b05d36ed9b6f546}\label{main_8c_a7088b687d3de04372b05d36ed9b6f546}} 
+\index{main.c@{main.c}!leds\_pins@{leds\_pins}}
+\index{leds\_pins@{leds\_pins}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{leds\_pins}{leds\_pins}}
+{\footnotesize\ttfamily const uint8\+\_\+t leds\+\_\+pins\mbox{[}$\,$\mbox{]} = \{ 13,14,15,16\}}
+
+\mbox{\Hypertarget{main_8c_a15f00096124548e5611a600671c2e240}\label{main_8c_a15f00096124548e5611a600671c2e240}} 
+\index{main.c@{main.c}!res@{res}}
+\index{res@{res}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{res}{res}}
+{\footnotesize\ttfamily volatile int res = 1}
+
+\mbox{\Hypertarget{main_8c_a6baa346e44f4c2158d2be4f9b77b8203}\label{main_8c_a6baa346e44f4c2158d2be4f9b77b8203}} 
+\index{main.c@{main.c}!ret@{ret}}
+\index{ret@{ret}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{ret}{ret}}
+{\footnotesize\ttfamily int ret}
+
+\mbox{\Hypertarget{main_8c_a8e44c00366a6ad7be391e050f015c419}\label{main_8c_a8e44c00366a6ad7be391e050f015c419}} 
+\index{main.c@{main.c}!SOF\_C@{SOF\_C}}
+\index{SOF\_C@{SOF\_C}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{SOF\_C}{SOF\_C}}
+{\footnotesize\ttfamily int S\+O\+F\+\_\+C = -\/1}
+
+\mbox{\Hypertarget{main_8c_aed71a558a0fc065e11b9c3c8fc2e2ad6}\label{main_8c_aed71a558a0fc065e11b9c3c8fc2e2ad6}} 
+\index{main.c@{main.c}!temp@{temp}}
+\index{temp@{temp}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{temp}{temp}}
+{\footnotesize\ttfamily volatile int temp = 0}
+
+Var para guardar valores de temperatura \mbox{\Hypertarget{main_8c_a8fa78f420436edca2c946574933b6594}\label{main_8c_a8fa78f420436edca2c946574933b6594}} 
+\index{main.c@{main.c}!thread\_but\_data@{thread\_but\_data}}
+\index{thread\_but\_data@{thread\_but\_data}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_but\_data}{thread\_but\_data}}
+{\footnotesize\ttfamily struct k\+\_\+thread thread\+\_\+but\+\_\+data}
+
+data da thread dos butoes \mbox{\Hypertarget{main_8c_a7026e425789d9360b0e05a2119add1d4}\label{main_8c_a7026e425789d9360b0e05a2119add1d4}} 
+\index{main.c@{main.c}!thread\_but\_period@{thread\_but\_period}}
+\index{thread\_but\_period@{thread\_but\_period}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_but\_period}{thread\_but\_period}}
+{\footnotesize\ttfamily volatile int thread\+\_\+but\+\_\+period = 10}
+
+periodo da thread dos butoes \mbox{\Hypertarget{main_8c_a5d5344bfd8c5264d7ff56160305fee2c}\label{main_8c_a5d5344bfd8c5264d7ff56160305fee2c}} 
+\index{main.c@{main.c}!thread\_but\_tid@{thread\_but\_tid}}
+\index{thread\_but\_tid@{thread\_but\_tid}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_but\_tid}{thread\_but\_tid}}
+{\footnotesize\ttfamily k\+\_\+tid\+\_\+t thread\+\_\+but\+\_\+tid}
+
+ID da tarefa da thread dos butoes \mbox{\Hypertarget{main_8c_ac7dc20b64529936c3c4ed179a4de4170}\label{main_8c_ac7dc20b64529936c3c4ed179a4de4170}} 
+\index{main.c@{main.c}!thread\_cmd\_data@{thread\_cmd\_data}}
+\index{thread\_cmd\_data@{thread\_cmd\_data}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_cmd\_data}{thread\_cmd\_data}}
+{\footnotesize\ttfamily struct k\+\_\+thread thread\+\_\+cmd\+\_\+data}
+
+data da thread dos comandos \mbox{\Hypertarget{main_8c_a85e39218b82c4dd4c35bfe98b0828cc6}\label{main_8c_a85e39218b82c4dd4c35bfe98b0828cc6}} 
+\index{main.c@{main.c}!thread\_cmd\_tid@{thread\_cmd\_tid}}
+\index{thread\_cmd\_tid@{thread\_cmd\_tid}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_cmd\_tid}{thread\_cmd\_tid}}
+{\footnotesize\ttfamily k\+\_\+tid\+\_\+t thread\+\_\+cmd\+\_\+tid}
+
+ID da tarefa da thread dos comandos \mbox{\Hypertarget{main_8c_a519c4bdf0a2f10969e8cc4568aa4e4ce}\label{main_8c_a519c4bdf0a2f10969e8cc4568aa4e4ce}} 
+\index{main.c@{main.c}!thread\_led\_data@{thread\_led\_data}}
+\index{thread\_led\_data@{thread\_led\_data}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_led\_data}{thread\_led\_data}}
+{\footnotesize\ttfamily struct k\+\_\+thread thread\+\_\+led\+\_\+data}
+
+data da thread dos leds \mbox{\Hypertarget{main_8c_a15690ef6e3ac9d9de8af5fc0cec488e4}\label{main_8c_a15690ef6e3ac9d9de8af5fc0cec488e4}} 
+\index{main.c@{main.c}!thread\_led\_period@{thread\_led\_period}}
+\index{thread\_led\_period@{thread\_led\_period}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_led\_period}{thread\_led\_period}}
+{\footnotesize\ttfamily volatile int thread\+\_\+led\+\_\+period = 1000}
+
+periodo da thread dos leds \mbox{\Hypertarget{main_8c_a29bb239088cf3b1e4334df4707bec059}\label{main_8c_a29bb239088cf3b1e4334df4707bec059}} 
+\index{main.c@{main.c}!thread\_led\_tid@{thread\_led\_tid}}
+\index{thread\_led\_tid@{thread\_led\_tid}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_led\_tid}{thread\_led\_tid}}
+{\footnotesize\ttfamily k\+\_\+tid\+\_\+t thread\+\_\+led\+\_\+tid}
+
+ID da tarefa da thread dos leds \mbox{\Hypertarget{main_8c_a1bb4edb2c01b7c2cef0c291b9eb4ba24}\label{main_8c_a1bb4edb2c01b7c2cef0c291b9eb4ba24}} 
+\index{main.c@{main.c}!thread\_print\_data@{thread\_print\_data}}
+\index{thread\_print\_data@{thread\_print\_data}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_print\_data}{thread\_print\_data}}
+{\footnotesize\ttfamily struct k\+\_\+thread thread\+\_\+print\+\_\+data}
+
+data da thread print \mbox{\Hypertarget{main_8c_ad715c7e90d928ffa86837d02d950707d}\label{main_8c_ad715c7e90d928ffa86837d02d950707d}} 
+\index{main.c@{main.c}!thread\_print\_tid@{thread\_print\_tid}}
+\index{thread\_print\_tid@{thread\_print\_tid}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_print\_tid}{thread\_print\_tid}}
+{\footnotesize\ttfamily k\+\_\+tid\+\_\+t thread\+\_\+print\+\_\+tid}
+
+ID da tarefa da thread print \mbox{\Hypertarget{main_8c_ae109bd29894a3e55e44d8b07173000c7}\label{main_8c_ae109bd29894a3e55e44d8b07173000c7}} 
+\index{main.c@{main.c}!thread\_tempread\_data@{thread\_tempread\_data}}
+\index{thread\_tempread\_data@{thread\_tempread\_data}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_tempread\_data}{thread\_tempread\_data}}
+{\footnotesize\ttfamily struct k\+\_\+thread thread\+\_\+tempread\+\_\+data}
+
+data da thread tempread \mbox{\Hypertarget{main_8c_a5de35b59a6b7a7c7272d6a71070cba11}\label{main_8c_a5de35b59a6b7a7c7272d6a71070cba11}} 
+\index{main.c@{main.c}!thread\_tempread\_period@{thread\_tempread\_period}}
+\index{thread\_tempread\_period@{thread\_tempread\_period}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_tempread\_period}{thread\_tempread\_period}}
+{\footnotesize\ttfamily volatile int thread\+\_\+tempread\+\_\+period = 5000}
+
+Periodo da thread tempread \mbox{\Hypertarget{main_8c_a53b9622bf70d6cebe3bc4a8ffabc9f0b}\label{main_8c_a53b9622bf70d6cebe3bc4a8ffabc9f0b}} 
+\index{main.c@{main.c}!thread\_tempread\_tid@{thread\_tempread\_tid}}
+\index{thread\_tempread\_tid@{thread\_tempread\_tid}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{thread\_tempread\_tid}{thread\_tempread\_tid}}
+{\footnotesize\ttfamily k\+\_\+tid\+\_\+t thread\+\_\+tempread\+\_\+tid}
+
+ID da tarefa da thread tempread \mbox{\Hypertarget{main_8c_a7dee997e1a185467314b43f216e2d5f9}\label{main_8c_a7dee997e1a185467314b43f216e2d5f9}} 
+\index{main.c@{main.c}!uart@{uart}}
+\index{uart@{uart}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{uart}{uart}}
+{\footnotesize\ttfamily const struct device$\ast$ uart = D\+E\+V\+I\+C\+E\+\_\+\+D\+T\+\_\+\+G\+ET(\mbox{\hyperlink{main_8c_a07b40c5bd9acc44f62a9182527dbcc9b}{U\+A\+R\+T\+\_\+\+N\+O\+DE}})}
+
+Get the device pointer of the U\+A\+RT hardware 
